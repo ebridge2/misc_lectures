@@ -345,6 +345,7 @@ Things get much more complex than this. We made several assumptions, mainly:
 - $\pi_0 = \pi_1 = 0.5$, meaning that we see each class with fairly equal probability
     - this is rarely the case in real data; often we will have completely biased proportions where we see more of one class than another.
 - $\Sigma_0 = \Sigma_1 = I_d$, meaning that each class has similar covariance matrices, and we assume there is no covariance or higher order relationships between our distributions
+- many other things that make our simple model naive in many situations
 
 ## Contact Information
 
