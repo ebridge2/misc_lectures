@@ -1,0 +1,356 @@
+---
+title: "Basic Point Classification Techniques"
+author: "Eric Bridgeford"
+date: "January 2, 2017"
+output: html_document
+---
+
+```{r}
+suppressMessages(require(gridExtra))
+suppressMessages(require(ggplot2))
+suppressMessages(require(lolR))
+suppressMessages(require(latex2exp))
+suppressMessages(require(MASS))
+suppressMessages(require(grid))
+```
+
+# Introduction
+
+## Me
+
+- Name: Eric Bridgeford
+- What I do: computational neuroscience research with Dr. Josh Vogelstein (yes, he is the guy you see walking around barefoot with dreadlocks)
+- My background: BME/CS major with math minor
+    - I put incredibly low effort freshman and sophomore year; don't be like me; your classes may seem useless now but surprise: they won't be
+    - I may be biased but if you are going to slack don't do it in a math or programming class; it will bite you in the a\$\$ later on
+- Interesting Aside: I took this class my freshman year 4 years ago (it was my first programming class, and I struggled fairly epically)
+    - did research over the summer and finally programming started to click; declared CS major the following year
+
+## You
+
+Tell me about your background?
+
+How many of you have taken a statistics class?
+
+How many of you are familiar with statistics?
+
+How many of you are vaguely interested in statistics?
+
+How many of you are pre-med?
+
+Do any of you want to do something like research at a pharmaceutical company or in academics?
+
+## What we are going to cover
+
+Basic application of mathematics, statistics, and programming.
+
+I guess you could call it Machine Learning; I'm not a big fan of that name because it's such a general topic area, but this is pretty much in that topic area.
+
+# Basic Point Classification
+  
+## Background
+  
+### What is a normal distribution and why should we care?
+
+- one of the most commonly used probability distributions to represent data
+- also called the "Bell Curve"
+
+### Normal Distribution Probability Density Function in 1 Dimension
+
+\begin{align*}
+  f_X &= \mathcal{N}\left(\mu, \sigma^2\right) \\
+  f_X\left(x; \mu, \sigma^2\right) &= \frac{1}{\sqrt{2 \pi \sigma^2}} e^{-\frac{(x - \mu)^2}{2\sigma^2}}
+\end{align*}
+
+- $\mu$ is the mean of the data. the "average value" the data can take
+- $\sigma$ is the variance of the data. Kind of like the "width" of the possible values that the data can take
+
+```{r, message=FALSE, warnings=FALSE, fig.width=13}
+oned.plot <- function(n, mu, var) {
+  x = rnorm(n, mean=mu, sd=sqrt(var))
+  data <- data.frame(x=x)
+  cent <- ggplot(data, aes(x=x, y=0)) +
+    geom_jitter(height=0.2) +
+    ylim(c(-1, 1)) +
+    ylab(TeX(sprintf("$\\mu = %.2f$, $\\sigma = %.2f$", n, mu, var))) +
+    xlab("") +
+    scale_y_continuous(labels=c(), breaks=c(), limits=c(-1, 1)) +
+    theme()
+  bottom <- ggplot(data, aes(x)) +
+    geom_density(fill='blue', alpha=0.5, adjust=2) +
+    xlim(c(-4, 4)) +
+    xlab(TeX(sprintf("$x \\sim N(\\mu = %.2f, \\sigma^2 = %.2f^2)$", mu, var))) +
+    scale_y_continuous(labels=c(), breaks=c()) +
+    ylab("Density")
+  return(arrangeGrob(cent, bottom, ncol=2, widths=c(.5, .5)))
+}
+n <- 1000
+mu <- 0; var <- 1
+normal <- oned.plot(n, mu, var)
+
+mu <- 0; var <- 4
+wide <- oned.plot(n, mu, var)
+
+mu <- 2; var <- 0.2
+narrow <- oned.plot(n, mu, var)
+
+grid.arrange(normal, wide, narrow, ncol=1)
+```
+
+As you can see above, $\mu$ is controlling the center of the points, and $\sigma$ is controlling the width of the range the points can occupy.
+
+### Normal Distribution PDF in Multiple Dimensions
+
+\begin{align*}
+  f_X &= \mathcal{N}\left(\mu, \Sigma\right) \\
+  f_X\left(x; \mu, \Sigma\right) &= \frac{1}{\sqrt{det(2\pi \Sigma)}} e^{-\frac{1}{2}(x - \mu)^T \Sigma^{-1}(x - \mu)}
+\end{align*}
+
+Looks more complex, but it's really not. Let's use a similar visualization to before to visualize a normal distribution with spherical covariance structuring in 2 dimensions:
+
+```{r, message=FALSE, warnings=FALSE, fig.width=7, fig.height=5}
+twod.plot <- function(n, mu, cov) {
+  x = MASS::mvrnorm(n, mu=mu, Sigma=cov)
+  data <- data.frame(x1=x[, 1], x2=x[, 2])
+  cent <- ggplot(data, aes(x=x1, y=x2)) +
+    geom_point() +
+    ylab(TeX("$x_2$")) +
+    xlab(TeX("$x_1$")) +
+    ggtitle("2-dimensional Normal Distribution")
+  right <- ggplot(data, aes(x2)) +
+    geom_density(fill='blue', alpha=0.5, adjust=2) +
+    xlab("") +
+    ylab("") +
+    scale_x_continuous(labels=c(), breaks=c()) +
+    scale_y_continuous(labels=c(), breaks=c()) +
+    coord_flip()
+  top <- ggplot(data, aes(x1)) +
+    geom_density(fill='blue', alpha=0.5, adjust=2) +
+    xlab("") +
+    ylab("") +
+    scale_x_continuous(labels=c(), breaks=c()) +
+    scale_y_continuous(labels=c(), breaks=c())
+  empty <- ggplot()+geom_point(aes(1,1), colour="white")+
+         theme(axis.ticks=element_blank(), 
+               panel.background=element_blank(), 
+               axis.text.x=element_blank(), axis.text.y=element_blank(),           
+               axis.title.x=element_blank(), axis.title.y=element_blank())
+  return(arrangeGrob(top, empty, cent, right, ncol=2, nrow=2, widths=c(4, 1), heights=c(1, 4)))
+}
+n <- 1000
+d <- 2
+mu <- array(0, dim=c(d, 1))
+cov <- diag(d)
+grid.arrange(twod.plot(n, mu, cov))
+```
+
+As you can see above, this is incredibly similar to our 1-dimensional setup of the normal distribution, except now we have 2 dimensions instead of 1 being normally distributed. There are some funky ways that the different dimensions have higher level interactions called covariances, but this idea can generally be extended arbitrarily to $d$-dimensions.
+
+## Problem Formulation
+
+### Data Setup
+
+Now that we have some intuition about how the normal distribution works, we are ready to formulate a problem mathematically:
+
+\begin{align*}
+  (X, Y) \sim F_{XY} \\
+  X: \Omega \rightarrow \mathbb{R}^d \\
+  Y: \Omega \rightarrow \{0, 1\}
+\end{align*}
+
+The above notation seems pretty esoteric but all it says is as follows:
+
+- $X$ and $Y$ are related by some joint distribution $F_{XY}$: there is some way to generalize an interaction between $X$ and $Y$
+- The random variable $X = \{x_i\}_{i=1}^n$ has samples $x_i$ that are $d$-dimensional and real ($\mathbb{R}^d$). This is referred to as our data.
+- The random variable $Y=\{y_i\}_{i=1}^n$ has samples $y_i$ that are either a $0$ or a $1$. These are referred to as "labels" for our data.
+
+Using our notation developed above, we will have the following:
+
+\begin{align*}
+  X | Y = 0 \sim f_0 &= \mathcal{N}\left(\mu_0, \Sigma_0\right) \\
+  X | Y = 1 \sim f_1 &= \mathcal{N}\left(\mu_1, \Sigma_1\right) \\
+  \mu_0 &\neq \mu_1
+\end{align*}
+
+$f_0$ and $f_1$ are called our marginal distirbutions. They give the probability distribution of a subset of $X$ conditioned on the value of $Y$, as the probability distribution of $X$ is different depending on which label it has.
+
+Note that this setup leaves open the possibility for $f_0$ and $f_1$ to be pretty much anything, which gives us no insight into how to develop our model.
+
+\begin{align*}
+  \mathbb{P}\left(y_i = j\right) = \pi_j
+\end{align*}
+
+This just means that we see $y_i$ taking class label $j$ with probability $\pi_j$ for our labels $j$ which can be 0 or 1.
+
+Clearly, $0$ and $1$ are the only values that $y_i$ can take. If we think of $y_i$ as a coin flip, there are only 2 outcomes. The probability of getting either a heads or a tails is clearly 1, just like the probability of both of these events happening:
+
+\begin{align*}
+  \sum_{j \in \{0, 1\}} \pi_j = 1
+\end{align*}
+
+### Goal
+
+Figure out when a particular $x_i$ would be a $1$, and when it would be a $0$.
+
+Formally, Given:
+
+\begin{align*}
+  g(X)&: X \rightarrow Y \\
+  L(g(X); Y) &= \frac{1}{n}\sum_{i = 1:n}\mathbb{I}\left\{g(x_i) \neq y_i\right\}
+\end{align*}
+
+- $g(X)$ is a function that maps each point to a value in $Y$. That means for each sample $x_i$, we have an associated label $y_i$. This is our "classification function".
+- $L(g(X); Y)$ is just a function that counts the number of times we incorrectly guess the labels for each $x_i$. $\mathbb{I}\{\cdot\}$ is a function that returns $1$ if $\cdot$ is true, and $0$ if $\cdot$ is false. This loss function can be called our "classification error". We are counting the number of times are classification function is wrong.
+
+Identify:
+
+\begin{align*}
+  g^*(X) = \textrm{argmin}_{g(x)} L(g(X))
+\end{align*}
+
+Figure out the best possible function $g(X)$, above called $g^*(X)$, that minimizes this notion of "classification error". This is the best possible classifier for our classification setup.
+
+### Constraining our problem
+
+This problem is hard; there are entire fields dedicated to how to solve it best. We can simplify it by assuming some basic things:
+
+\begin{align*}
+  \Sigma_0 = \Sigma_1 = I_d
+\end{align*}
+
+Here, this means that we are assuming that our marginal distributions $f_0$ and $f_1$ have the same notion of "width" that we developed before, and there are no "high-level" associations between the "widths". This is the exact same setup as our $2$-dimensional example we developed above.
+
+\begin{align*}
+  \pi_0 = \pi_1 = 0.5
+\end{align*}
+
+This means that on average, we aren't really going to see more of one class than another.
+
+Let's take a look at what this data may look like in a $2$-dimensional case:
+
+```{r, message=FALSE, warnings=FALSE}
+plot.center <- function(data, cols, sizes, title) {
+  return(ggplot(data, aes(x=x1, y=x2, color=y, shape=y, size=y)) +
+    geom_point() +
+    ylab(TeX("$x_2$")) +
+    xlab(TeX("$x_1$")) +
+    scale_color_manual(values=cols) +
+    #scale_shape_manual(values=shapes) +
+    scale_size_manual(values=sizes) +
+    ggtitle(title))
+}
+cols = c("#ff4040", "#4f4ff9", "#09ba09")
+name.vec <- c("1", "2", "center")
+names(cols) <- name.vec
+shapes = c(16, 16, "star")
+names(shapes) <- name.vec
+sizes = c(1.5, 1.5, 5)
+names(sizes) <- name.vec
+twod.plot <- function(data, cols, shapes, sizes) {
+  data$y <- factor(data$y)
+  cent <- plot.center(data, cols, sizes, "2-dimensional Normal Distribution with 2 classes")
+  right <- ggplot(base::subset(data, y != "center"), aes(x2, fill=y)) +
+    geom_density(alpha=0.5, adjust=2) +
+    xlab("") +
+    ylab("") +
+    scale_fill_manual(values=cols) +
+    scale_x_continuous(labels=c(), breaks=c()) +
+    scale_y_continuous(labels=c(), breaks=c()) +
+    coord_flip()
+  top <- ggplot(base::subset(data, y != "center"), aes(x1, fill=y)) +
+    geom_density(alpha=0.5, adjust=2) +
+    xlab("") +
+    ylab("") +
+    scale_fill_manual(values=cols) +
+    scale_x_continuous(labels=c(), breaks=c()) +
+    scale_y_continuous(labels=c(), breaks=c())
+  empty <- ggplot()+geom_point(aes(1,1), colour="white")+
+         theme(axis.ticks=element_blank(), 
+               panel.background=element_blank(), 
+               axis.text.x=element_blank(), axis.text.y=element_blank(),           
+               axis.title.x=element_blank(), axis.title.y=element_blank())
+  return(arrangeGrob(top, empty, cent, right, ncol=2, nrow=2, widths=c(4, 1), heights=c(1, 4)))
+}
+
+n <- 1000; d <- 20
+sim <- lol.sims.mean_diff(n=n, d=d, md=2)
+data <- data.frame(x1=sim$X[,1], x2=sim$X[,2], y=sim$Y)
+grid.arrange(twod.plot(data, cols[1:2], shapes[1:2], sizes[1:2]))
+```
+
+### A Simple Classifier
+
+Looking at this data, it's pretty clear that the biggest difference in the points is just the mean separation, as we previously discussed.
+
+If we were to have some notion of where the center of each "cluster" of points were, we could probably do a pretty good job figuring out which class a point belonged to just by looking at which center it is closest to.
+
+#### Model
+
+We will use the following estimate of the mean:
+
+\begin{align*}
+  \hat{\mu}_j = \frac{1}{|\{i: y_i = j\}|}\sum_{i: y_i = j} x_i
+\end{align*}
+
+What are we doing above?
+
+Just taking the average of the points with a label $j$ to define the estimate of the mean $\hat{\mu}_j$ for cluster $j$.
+
+```{r}
+model <- lol.classify.nearestCentroid(sim$X, sim$Y)
+data <- rbind(data, data.frame(x1=model$centroids[, 1], x2=model$centroids[, 2], y="center"))
+grid.arrange(twod.plot(data, cols, shapes, sizes))
+```
+
+#### Classification (Prediction) Function
+
+As we said, let's just assign each point to the center that it is closest to using the euclidian distance:
+
+\begin{align*}
+  \hat{y}_i = g(x_i) = \textrm{argmin}_{j \in \{0, 1\}} ||x_i - \mu_j||
+\end{align*}
+
+Where $||\cdot||$ is the euclidian distance you are all probably familiar with:
+
+\begin{align*}
+  ||a|| = \sqrt{a_1^2 + a_2^2 + ... a_d^2}
+\end{align*}
+
+that gives us a notion of a "distance" to a particular center.
+
+```{r}
+Yhat <- predict(model, sim$X)
+datahat <- data.frame(x1=sim$X[,1], x2=sim$X[,2], y=Yhat)
+datahat <- rbind(datahat, data.frame(x1=model$centroids[, 1], x2=model$centroids[, 2], y="center"))
+grid.arrange(plot.center(datahat, cols, sizes, "Predicted Classes"))
+```
+
+As we can see in the above example, our predictions are pretty good. Our points are assigned to the closest center. Comparing with the original data:
+
+```{r}
+grid.arrange(plot.center(data, cols, sizes, "Original Classes"),
+             plot.center(datahat, cols, sizes, "Predicted Classes"))
+```
+
+Where our "classification error" is:
+
+```{r}
+print(sum(Yhat != sim$Y)/length(sim$Y))
+```
+
+## Downsides
+
+Things get much more complex than this. We made several assumptions, mainly:
+
+- $\pi_0 = \pi_1 = 0.5$, meaning that we see each class with fairly equal probability
+    - this is rarely the case in real data; often we will have completely biased proportions where we see more of one class than another.
+- $\Sigma_0 = \Sigma_1 = I_d$, meaning that each class has similar covariance matrices, and we assume there is no covariance or higher order relationships between our distributions
+
+## Contact Information
+
+Me: ericwb95@gmail.com
+Jovo (Josh Vogelstein) my boss: jovo@jhu.edu
+
+We have openings for research this semester; contact us for details!
+
+Thanks!
